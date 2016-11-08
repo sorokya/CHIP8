@@ -2,14 +2,14 @@ use std::fs::File;
 use std::env;
 
 extern crate sfml;
-use sfml::graphics::{CircleShape, Color, ConvexShape, Font, RenderTarget, RenderWindow, Sprite,
-                     Text, Texture, Transformable};
+use sfml::graphics::{Vertex, VertexArray, Color, ConvexShape, Font, RenderTarget, RenderWindow, Sprite,
+                     Text, Texture, Transformable, PrimitiveType};
 use sfml::window::{Key, VideoMode, event, window_style};
 use sfml::system::Vector2f;
 
-static SCREEN_WIDTH: u32 = 64;
-static SCREEN_HEIGHT: u32 = 32;
-static SCREEN_SCALE: u32 = 8;
+const SCREEN_WIDTH: u32 = 64;
+const SCREEN_HEIGHT: u32 = 32;
+const SCREEN_SCALE: u32 = 8;
 
 mod chip8;
 use chip8::CHIP8;
@@ -31,6 +31,8 @@ fn main() {
         .unwrap();
     window.set_vertical_sync_enabled(true);
 
+    let mut scene = VertexArray::new_init(PrimitiveType::sfQuads, SCREEN_WIDTH * SCREEN_HEIGHT * 4).unwrap();
+
     while !chip.done() {
         chip.tick();
 
@@ -43,6 +45,40 @@ fn main() {
         }
 
         window.clear(&Color::black());
+        scene.clear();
+
+        // println!("{:?}", chip.gfx);
+        for x in 0..SCREEN_WIDTH as u32 {
+            for y in 0..SCREEN_HEIGHT as u32 {
+                if chip.gfx[(x+y*SCREEN_WIDTH) as usize] == 1 {
+                    scene.append(&Vertex::new(&Vector2f {
+                        x: x as f32 * SCREEN_SCALE as f32,
+                        y: y as f32 * SCREEN_SCALE as f32,
+                    },
+                    &Color::green(), &Vector2f {x:0.0,y:0.0}));
+
+                    scene.append(&Vertex::new(&Vector2f {
+                        x: (x + 1) as f32 * SCREEN_SCALE as f32,
+                        y: y as f32 * SCREEN_SCALE as f32,
+                    },
+                    &Color::green(), &Vector2f {x:0.0,y:0.0}));
+
+                    scene.append(&Vertex::new(&Vector2f {
+                        x: (x + 1) as f32 * SCREEN_SCALE as f32,
+                        y: (y + 1) as f32 * SCREEN_SCALE as f32,
+                    },
+                    &Color::green(), &Vector2f {x:0.0,y:0.0}));
+
+                    scene.append(&Vertex::new(&Vector2f {
+                        x: x as f32 * SCREEN_SCALE as f32,
+                        y: (y + 1) as f32 * SCREEN_SCALE as f32,
+                    },
+                    &Color::green(), &Vector2f {x:0.0,y:0.0}));
+                }
+            }
+        }
+
+        window.draw(&scene);
         window.display();
     }
 }

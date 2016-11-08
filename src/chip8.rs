@@ -2,8 +2,7 @@ use std::io::Read;
 
 const RAM_SIZE: usize = 4096;
 const GPR_COUNT: usize = 16;
-static SCREEN_WIDTH: usize = 64;
-static SCREEN_HEIGHT: usize = 32;
+
 const STACK_SIZE: usize = 16;
 const NUMBER_OF_KEYS: usize = 16;
 
@@ -40,7 +39,7 @@ pub struct CHIP8 {
     pc: u16,
 
     // Pixels
-    gfx: Vec<u8>,
+    pub gfx: Vec<u8>,
 
     // Timers
     delay_timer: u8,
@@ -56,7 +55,7 @@ pub struct CHIP8 {
 
 impl CHIP8 {
     pub fn tick(&mut self) {
-        let opcode = ((self.ram[self.pc as usize] as u16) << 8 | self.ram[self.pc as usize + 1] as u16);
+        let opcode = (((self.ram[self.pc as usize] as u16) << 8) | (self.ram[self.pc as usize + 1] as u16));
 
         let x = ((opcode & 0x0F00) >> 8) as usize;
         let y = ((opcode & 0x00F0) >> 4) as usize;
@@ -64,13 +63,24 @@ impl CHIP8 {
         let nnn = (opcode & 0x0FFF) as u16;
         let n = (opcode & 0x000F) as u8;
 
+        // println!("OPCODE: {:X} PC: {} X: {} Y: {} KK: {} NNN: {} N: {}", opcode, self.pc, x, y, kk, nnn, n);
+
         match opcode & 0xF000 {
-            0x6000 => self.ld(kk, x),
-            0xA000 => self.ldi(nnn),
-            0xD000 => {}, // TODO draw something
+            0x0000 => {
+                match opcode & 0x00FF {
+                    0x00EE => self.ret(),
+                    _ => panic!("Unrecognized opcode {:X}", opcode),
+                }
+            },
             0x2000 => self.call(nnn),
+            0x6000 => self.ldvx(kk, x),
+            0x7000 => self.addvx(kk, x),
+            0xA000 => self.ldi(nnn),
+            0xD000 => self.drw(x, y, n),
             0xF000 => {
-                match opcode & & 0x00FF {
+                match opcode & 0x00FF {
+                    0x0007 => self.ldvxdt(x),
+                    0x0015 => self.lddtvx(x),
                     0x0029 => self.ldfvx(x),
                     0x0033 => self.ldbvx(x),
                     0x0065 => self.ldvxi(x),
@@ -83,8 +93,12 @@ impl CHIP8 {
         self.pc += 2;
     }
 
-    fn ld(&mut self, value: u8, register: usize) {
+    fn ldvx(&mut self, value: u8, register: usize) {
         self.v[register] = value;
+    }
+
+    fn addvx(&mut self, value: u8, register: usize) {
+        self.v[register] += value;
     }
 
     fn ldi(&mut self, value: u16) {
@@ -93,7 +107,11 @@ impl CHIP8 {
 
     fn call(&mut self, value: u16) {
         self.stack.push(self.pc);
-        self.pc = value;
+        self.pc = value - 2;
+    }
+
+    fn ret(&mut self) {
+        self.pc = self.stack.pop().unwrap() - 2;
     }
 
     fn ldbvx(&mut self, register: usize) {
@@ -110,6 +128,38 @@ impl CHIP8 {
 
     fn ldfvx(&mut self, register: usize) {
         self.i = FONT_SET[self.v[register] as usize] as u16;
+    }
+
+    fn lddtvx(&mut self, register: usize) {
+        self.delay_timer = self.v[register];
+    }
+
+    fn ldvxdt(&mut self, register: usize) {
+        self.v[register] = self.delay_timer;
+    }
+
+    fn drw(&mut self, x_register: usize, y_register: usize, number_of_bytes: u8) {
+        let x = self.v[x_register] as u16;
+        let y = self.v[y_register] as u16;
+        let height = number_of_bytes as u16;
+        let mut pixel: u16;
+
+        self.v[0xF] = 0;
+        for yline in 0..height {
+
+            pixel = self.ram[(self.i + yline) as usize] as u16;
+            for xline in 0..8 {
+                if pixel & (0x80 >> xline) != 0 {
+                    let index = (x + xline + (y + yline) * 64) as usize;
+
+                    if self.gfx[index] == 1 {
+                        self.v[0xF] = 1;
+                    }
+
+                    self.gfx[index] ^= 1;
+                }
+            }
+        }
     }
 
     pub fn done(&self) -> bool {
@@ -141,7 +191,7 @@ impl CHIP8 {
             v: vec![0; GPR_COUNT],
             i: 0,
             pc: 0x200,
-            gfx: vec![0; SCREEN_WIDTH * SCREEN_HEIGHT],
+            gfx: vec![0; (::SCREEN_WIDTH * ::SCREEN_HEIGHT) as usize],
             delay_timer: 0,
             sound_timer: 0,
             stack: Vec::new(),
