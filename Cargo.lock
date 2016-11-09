@@ -2,6 +2,7 @@
 name = "CHIP8"
 version = "0.1.0"
 dependencies = [
+ "rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "sfml 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -65,6 +66,14 @@ version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "rand"
+version = "0.3.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.2.17 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "sfml"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -92,5 +101,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum csfml-system-sys 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f613309f92bca2549e066286580d0ab69809afba4675c3fc0c7943409c77206d"
 "checksum csfml-window-sys 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "f74f961b69749ca7e62ad66b7959ab62f63847826d8cb3a068250fcbd1c3fbcf"
 "checksum libc 0.2.17 (registry+https://github.com/rust-lang/crates.io-index)" = "044d1360593a78f5c8e5e710beccdc24ab71d1f01bc19a29bcacdba22e8475d8"
+"checksum rand 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)" = "2791d88c6defac799c3f20d74f094ca33b9332612d9aef9078519c82e4fe04a5"
 "checksum sfml 0.11.2 (registry+https://github.com/rust-lang/crates.io-index)" = "796ac61674669d1cbc9a444af283aa622c8bf018692a9ec4dc39ff9445615469"
 "checksum sfml-types 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "d81c513af1beb0d4105ac8269dc0f8405d0e1bbf0d589af1b882fb515d7c5758"

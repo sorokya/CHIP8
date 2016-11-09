@@ -2,10 +2,10 @@ use std::fs::File;
 use std::env;
 
 extern crate sfml;
-use sfml::graphics::{Vertex, VertexArray, Color, ConvexShape, Font, RenderTarget, RenderWindow, Sprite,
-                     Text, Texture, Transformable, PrimitiveType};
+use sfml::graphics::{Vertex, VertexArray, Color, RenderTarget, RenderWindow,
+                     PrimitiveType};
 use sfml::window::{Key, VideoMode, event, window_style};
-use sfml::system::Vector2f;
+use sfml::system::{Clock, Time, Vector2f};
 
 const SCREEN_WIDTH: u32 = 64;
 const SCREEN_HEIGHT: u32 = 32;
@@ -29,12 +29,31 @@ fn main() {
                                        window_style::CLOSE,
                                        &Default::default())
         .unwrap();
+
     window.set_vertical_sync_enabled(true);
 
     let mut scene = VertexArray::new_init(PrimitiveType::sfQuads, SCREEN_WIDTH * SCREEN_HEIGHT * 4).unwrap();
+    let mut clock = Clock::new();
 
     while !chip.done() {
-        chip.tick();
+        chip.key[0] = Key::Num1.is_pressed() as u8;
+        chip.key[1] = Key::Num2.is_pressed() as u8;
+        chip.key[2] = Key::Num3.is_pressed() as u8;
+        chip.key[3] = Key::Num4.is_pressed() as u8;
+        chip.key[4] = Key::Q.is_pressed() as u8;
+        chip.key[5] = Key::W.is_pressed() as u8;
+        chip.key[6] = Key::E.is_pressed() as u8;
+        chip.key[7] = Key::R.is_pressed() as u8;
+        chip.key[8] = Key::A.is_pressed() as u8;
+        chip.key[9] = Key::S.is_pressed() as u8;
+        chip.key[10] = Key::D.is_pressed() as u8;
+        chip.key[11] = Key::F.is_pressed() as u8;
+        chip.key[12] = Key::Z.is_pressed() as u8;
+        chip.key[13] = Key::X.is_pressed() as u8;
+        chip.key[14] = Key::C.is_pressed() as u8;
+        chip.key[15] = Key::V.is_pressed() as u8;
+
+        chip.tick(clock.restart().as_seconds());
 
         for event in window.events() {
             match event {
@@ -47,33 +66,32 @@ fn main() {
         window.clear(&Color::black());
         scene.clear();
 
-        // println!("{:?}", chip.gfx);
-        for x in 0..SCREEN_WIDTH as u32 {
-            for y in 0..SCREEN_HEIGHT as u32 {
+        for y in 0..SCREEN_HEIGHT as u32 {
+            for x in 0..SCREEN_WIDTH as u32 {
                 if chip.gfx[(x+y*SCREEN_WIDTH) as usize] == 1 {
                     scene.append(&Vertex::new(&Vector2f {
                         x: x as f32 * SCREEN_SCALE as f32,
                         y: y as f32 * SCREEN_SCALE as f32,
                     },
-                    &Color::green(), &Vector2f {x:0.0,y:0.0}));
+                    &Color::white(), &Vector2f {x:0.0,y:0.0}));
 
                     scene.append(&Vertex::new(&Vector2f {
                         x: (x + 1) as f32 * SCREEN_SCALE as f32,
                         y: y as f32 * SCREEN_SCALE as f32,
                     },
-                    &Color::green(), &Vector2f {x:0.0,y:0.0}));
+                    &Color::white(), &Vector2f {x:0.0,y:0.0}));
 
                     scene.append(&Vertex::new(&Vector2f {
                         x: (x + 1) as f32 * SCREEN_SCALE as f32,
                         y: (y + 1) as f32 * SCREEN_SCALE as f32,
                     },
-                    &Color::green(), &Vector2f {x:0.0,y:0.0}));
+                    &Color::white(), &Vector2f {x:0.0,y:0.0}));
 
                     scene.append(&Vertex::new(&Vector2f {
                         x: x as f32 * SCREEN_SCALE as f32,
                         y: (y + 1) as f32 * SCREEN_SCALE as f32,
                     },
-                    &Color::green(), &Vector2f {x:0.0,y:0.0}));
+                    &Color::white(), &Vector2f {x:0.0,y:0.0}));
                 }
             }
         }
