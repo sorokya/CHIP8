@@ -5,6 +5,8 @@ use std::io::Read;
 extern crate rand;
 use self::rand::Rng;
 
+use instruction::{Opcode, Instruction};
+
 const RAM_SIZE: usize = 4096;
 const GPR_COUNT: usize = 16;
 
@@ -141,7 +143,7 @@ impl CHIP8 {
         }
 
         self.time_acc += dt;
-        while (self.time_acc >= time_step) {
+        while self.time_acc >= time_step {
             if self.delay_timer > 0 {
                 self.delay_timer -= 1;
             }

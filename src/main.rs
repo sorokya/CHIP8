@@ -1,16 +1,19 @@
 use std::fs::File;
 use std::env;
 
+#[macro_use] extern crate enum_primitive;
+
 extern crate sfml;
 use sfml::graphics::{Vertex, VertexArray, Color, RenderTarget, RenderWindow,
                      PrimitiveType};
-use sfml::window::{Key, VideoMode, event, window_style};
+use sfml::window::{Key, VideoMode, Event, window_style};
 use sfml::system::{Clock, Time, Vector2f};
 
 const SCREEN_WIDTH: u32 = 64;
 const SCREEN_HEIGHT: u32 = 32;
 const SCREEN_SCALE: u32 = 8;
 
+mod instruction;
 mod chip8;
 use chip8::CHIP8;
 
@@ -32,7 +35,7 @@ fn main() {
 
     window.set_vertical_sync_enabled(true);
 
-    let mut scene = VertexArray::new_init(PrimitiveType::sfQuads, SCREEN_WIDTH * SCREEN_HEIGHT * 4).unwrap();
+    let mut scene = VertexArray::new_init(PrimitiveType::sfQuads, SCREEN_WIDTH * SCREEN_HEIGHT * 4);
     let mut clock = Clock::new();
 
     while !chip.done() {
@@ -57,8 +60,8 @@ fn main() {
 
         for event in window.events() {
             match event {
-                event::Event::Closed |
-                event::Event::KeyPressed { code: Key::Escape, .. } => return,
+                Event::Closed |
+                Event::KeyPressed { code: Key::Escape, .. } => return,
                 _ => {}
             }
         }
