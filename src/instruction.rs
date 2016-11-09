@@ -1,5 +1,5 @@
 enum_from_primitive! {
-    #[derive(PartialEq)]
+    #[derive(Debug,PartialEq)]
     pub enum Opcode {
         sys = 0x0000,
         cls = 0x00E0,
@@ -36,14 +36,41 @@ enum_from_primitive! {
         ld_b_v = 0xF033,
         ld_i_v = 0xF055,
         ld_v_i = 0xF065,
+        invalid,
     }
 }
 
 pub struct Instruction {
-    opcode: Opcode,
+    pub opcode: Opcode,
     x: usize,
     y: usize,
     kk: u8,
     nnn: u16,
     n: u8,
+}
+
+impl Instruction {
+    pub fn parse(op: u16) -> Instruction {
+        println!("{:X}", op);
+
+        Instruction {
+            opcode: Opcode::invalid,
+            x: 0,
+            y: 0,
+            kk: 0,
+            nnn: 0,
+            n: 0,
+        }
+    }
+
+    pub fn new() -> Instruction {
+        Instruction {
+            opcode: Opcode::invalid,
+            x: 0,
+            y: 0,
+            kk: 0,
+            nnn: 0,
+            n: 0,
+        }
+    }
 }
