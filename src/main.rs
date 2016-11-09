@@ -66,40 +66,43 @@ fn main() {
             }
         }
 
-        window.clear(&Color::black());
-        scene.clear();
+        if chip.draw {
+            window.clear(&Color::black());
+            scene.clear();
 
-        for y in 0..SCREEN_HEIGHT as u32 {
-            for x in 0..SCREEN_WIDTH as u32 {
-                if chip.gfx[(x+y*SCREEN_WIDTH) as usize] == 1 {
-                    scene.append(&Vertex::new(&Vector2f {
-                        x: x as f32 * SCREEN_SCALE as f32,
-                        y: y as f32 * SCREEN_SCALE as f32,
-                    },
-                    &Color::white(), &Vector2f {x:0.0,y:0.0}));
+            for y in 0..SCREEN_HEIGHT as u32 {
+                for x in 0..SCREEN_WIDTH as u32 {
+                    if chip.gfx[(x+y*SCREEN_WIDTH) as usize] == 1 {
+                        scene.append(&Vertex::new(&Vector2f {
+                            x: x as f32 * SCREEN_SCALE as f32,
+                            y: y as f32 * SCREEN_SCALE as f32,
+                        },
+                        &Color::white(), &Vector2f {x:0.0,y:0.0}));
 
-                    scene.append(&Vertex::new(&Vector2f {
-                        x: (x + 1) as f32 * SCREEN_SCALE as f32,
-                        y: y as f32 * SCREEN_SCALE as f32,
-                    },
-                    &Color::white(), &Vector2f {x:0.0,y:0.0}));
+                        scene.append(&Vertex::new(&Vector2f {
+                            x: (x + 1) as f32 * SCREEN_SCALE as f32,
+                            y: y as f32 * SCREEN_SCALE as f32,
+                        },
+                        &Color::white(), &Vector2f {x:0.0,y:0.0}));
 
-                    scene.append(&Vertex::new(&Vector2f {
-                        x: (x + 1) as f32 * SCREEN_SCALE as f32,
-                        y: (y + 1) as f32 * SCREEN_SCALE as f32,
-                    },
-                    &Color::white(), &Vector2f {x:0.0,y:0.0}));
+                        scene.append(&Vertex::new(&Vector2f {
+                            x: (x + 1) as f32 * SCREEN_SCALE as f32,
+                            y: (y + 1) as f32 * SCREEN_SCALE as f32,
+                        },
+                        &Color::white(), &Vector2f {x:0.0,y:0.0}));
 
-                    scene.append(&Vertex::new(&Vector2f {
-                        x: x as f32 * SCREEN_SCALE as f32,
-                        y: (y + 1) as f32 * SCREEN_SCALE as f32,
-                    },
-                    &Color::white(), &Vector2f {x:0.0,y:0.0}));
+                        scene.append(&Vertex::new(&Vector2f {
+                            x: x as f32 * SCREEN_SCALE as f32,
+                            y: (y + 1) as f32 * SCREEN_SCALE as f32,
+                        },
+                        &Color::white(), &Vector2f {x:0.0,y:0.0}));
+                    }
                 }
             }
+
+            window.draw(&scene);
+            window.display();
         }
 
-        window.draw(&scene);
-        window.display();
     }
 }
