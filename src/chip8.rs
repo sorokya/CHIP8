@@ -345,22 +345,14 @@ impl CHIP8 {
     }
 
     fn ld_iv(&mut self) {
-        for i in 0usize..self.instruction.x {
+        for i in 0usize..self.instruction.x + 1 {
             self.ram[self.i as usize + i] = self.v[i];
-        }
-
-        if self.instruction.x == 0 {
-            self.ram[self.i as usize] = self.v[0];
         }
     }
 
     fn ld_vi(&mut self) {
-        for i in 0usize..self.instruction.x {
+        for i in 0usize..self.instruction.x + 1 {
             self.v[i] = self.ram[self.i as usize + i];
-        }
-
-        if self.instruction.x == 0 {
-            self.v[0] = self.ram[self.i as usize];
         }
     }
 
