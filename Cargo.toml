@@ -7,3 +7,4 @@ authors = ["Richard Leek <richard@prositeone.com>"]
 sfml = { git = "https://github.com/jeremyletang/rust-sfml" }
 rand = "0.3"
 enum_primitive = "0.1.0"
+clap = "2.18.0"

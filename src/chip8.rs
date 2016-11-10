@@ -1,18 +1,19 @@
-#![allow(non_snake_case_types)]
-
 use std::io::Read;
+use std::fmt;
 
 extern crate rand;
 use self::rand::Rng;
 
 use instruction::{Opcode, Instruction};
+use enum_primitive::FromPrimitive;
 
 const RAM_SIZE: usize = 4096;
 const GPR_COUNT: usize = 16;
 
 const NUMBER_OF_KEYS: usize = 16;
 
-const TIME_STEP: f32 = 1.0 / 30.0;
+// 60Hz
+const TIME_STEP: f32 = 1.0 / 60.0;
 
 const FONT_SET: [u8; 80] = [
     0xf0, 0x90, 0x90, 0x90, 0xf0, // 0
@@ -68,84 +69,58 @@ pub struct CHIP8 {
     pub draw: bool,
 }
 
+impl fmt::Display for CHIP8 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "PC: {}\nInstruction: {}\nRegisters: {:?}\nDelay Timer: {}\nSound Timer: {}", self.pc, self.instruction, self.v, self.delay_timer, self.sound_timer)
+    }
+}
+
 impl CHIP8 {
     pub fn tick(&mut self, dt: f32) {
-        // self.instruction = Instruction::parse(((self.ram[self.pc as usize] as u16) << 8) | (self.ram[self.pc as usize + 1] as u16));
-        // match self.instruction.opcode {
-        //     Opcode::sys => {},
-        //     _ => {},
-        // }
-
-        let opcode = ((self.ram[self.pc as usize] as u16) << 8) | (self.ram[self.pc as usize + 1] as u16);
+        self.jmp = false;
         self.draw = false;
 
-        // panic!("{:b} | {:b} = {:X}", (self.ram[self.pc as usize] as u16) << 8, (self.ram[self.pc as usize + 1] as u16), ((self.ram[self.pc as usize] as u16) << 8) | (self.ram[self.pc as usize + 1] as u16));
+        self.instruction.parse(self.ram[self.pc as usize], self.ram[self.pc as usize + 1]);
 
-        let x = ((opcode & 0x0F00) >> 8) as usize;
-        let y = ((opcode & 0x00F0) >> 4) as usize;
-        let kk = (opcode & 0x00FF) as u8;
-        let nnn = (opcode & 0x0FFF) as u16;
-        let n = (opcode & 0x000F) as u8;
+        // println!("{}", self);
 
-        self.jmp = false;
-
-        match opcode & 0xF000 {
-            0x0000 => {
-                match opcode & 0x00FF {
-                    0x0000 => self.SYS(nnn),
-                    0x00E0 => self.CLS(),
-                    0x00EE => self.RET(),
-                    _ => panic!("Unrecognized opcode {:X}", opcode),
-                }
-            },
-            0x1000 => self.JUMP(nnn),
-            0x2000 => self.CALL(nnn),
-            0x3000 => self.SE_VX(kk, x),
-            0x4000 => self.SNE_VX(kk, x),
-            0x5000 => self.SE_VX_VY(x, y),
-            0x6000 => self.LD_VX(kk, x),
-            0x7000 => self.ADD_VX(kk, x),
-            0x8000 => {
-                match opcode & 0x000F {
-                    0x0000 => self.LD_VX_VY(x, y),
-                    0x0001 => self.OR_VX_VY(x, y),
-                    0x0002 => self.AND_VX_VY(x, y),
-                    0x0003 => self.XOR_VX_VY(x, y),
-                    0x0004 => self.ADD_VX_VY(x, y),
-                    0x0005 => self.SUB_VX_VY(x, y),
-                    0x0006 => self.SHR_VX(x),
-                    0x0007 => self.SUBN_VX_VY(x, y),
-                    0x000E => self.SHL_VX(x),
-                    _ => panic!("Unrecognized opcode {:X}", opcode),
-                }
-            }
-            0x9000 => self.SNE_VX_VY(x, y),
-            0xA000 => self.LD_I(nnn),
-            0xB000 => self.JUMP_V0(nnn),
-            0xC000 => self.RND_VX_B(kk, x),
-            0xD000 => self.DRAW(x, y, n),
-            0xE000 => {
-                match opcode & 0x00FF {
-                    0x009E => self.SKP_VX(x),
-                    0x00A1 => self.SKNP_VX(x),
-                    _ => panic!("Unrecognized opcode {:X}", opcode),
-                }
-            }
-            0xF000 => {
-                match opcode & 0x00FF {
-                    0x0007 => self.LD_VX_DT(x),
-                    0x000A => self.LD_VX_K(x),
-                    0x0015 => self.LD_DT_VX(x),
-                    0x0018 => self.LD_ST_VX(x),
-                    0x001E => self.ADD_I_VX(x),
-                    0x0029 => self.LD_F_VX(x),
-                    0x0033 => self.LD_B_VX(x),
-                    0x0055 => self.LD_I_VX(x),
-                    0x0065 => self.LD_VX_I(x),
-                    _ => panic!("Unrecognized opcode {:X}", opcode),
-                }
-            },
-            _ => panic!("Unrecognized opcode {:X}", opcode),
+        match Opcode::from_u16(self.instruction.opcode).unwrap() {
+            Opcode::sys | Opcode::noop => {},
+            Opcode::cls => self.cls(),
+            Opcode::ret => self.ret(),
+            Opcode::jmp => self.jmp(),
+            Opcode::call => self.call(),
+            Opcode::se_vb => self.se_vb(),
+            Opcode::sne_vb => self.sne_vb(),
+            Opcode::se_vv => self.se_vv(),
+            Opcode::ld_vb => self.ld_vb(),
+            Opcode::add_vb => self.add_vb(),
+            Opcode::ld_vv => self.ld_vv(),
+            Opcode::or => self.or(),
+            Opcode::and => self.and(),
+            Opcode::xor => self.xor(),
+            Opcode::add_vv => self.add_vv(),
+            Opcode::sub => self.sub(),
+            Opcode::shr => self.shr(),
+            Opcode::subn => self.subn(),
+            Opcode::shl => self.shl(),
+            Opcode::sne_vv => self.sne_vv(),
+            Opcode::ld_i => self.ld_i(),
+            Opcode::jmp_v => self.jmp_v(),
+            Opcode::rnd => self.rnd(),
+            Opcode::drw => self.drw(),
+            Opcode::skp => self.skp(),
+            Opcode::sknp => self.sknp(),
+            Opcode::ld_vdt => self.ld_vdt(),
+            Opcode::ld_vk => self.ld_vk(),
+            Opcode::ld_dtv => self.ld_dtv(),
+            Opcode::ld_stv => self.ld_stv(),
+            Opcode::add_iv => self.add_iv(),
+            Opcode::ld_fv => self.ld_fv(),
+            Opcode::ld_bv => self.ld_bv(),
+            Opcode::ld_iv => self.ld_iv(),
+            Opcode::ld_vi => self.ld_vi(),
+            _ => panic!("Unrecognized opcode {:X}", self.instruction.opcode),
         }
 
         if !self.jmp {
@@ -166,195 +141,120 @@ impl CHIP8 {
         }
     }
 
-    fn XOR_VX_VY(&mut self, x_register: usize, y_register:usize) {
-        self.v[x_register] ^= self.v[y_register];
-    }
-
-    fn JUMP_V0(&mut self, value: u16) {
-        self.pc = (self.v[0] as u16) + value;
-        self.jmp = true;
-    }
-
-    fn SUBN_VX_VY(&mut self, x_register: usize, y_register: usize) {
-        self.v[0xF] = (self.v[y_register] > self.v[x_register]) as u8;
-        self.v[x_register] = self.v[y_register].wrapping_sub(self.v[x_register]);
-    }
-
-    fn SHR_VX(&mut self, x_register: usize) {
-        self.v[0xf] = self.v[x_register] & 0x1;
-        self.v[x_register] = self.v[x_register] >> 1;
-    }
-
-    fn SHL_VX(&mut self, x_register: usize) {
-        self.v[0xf] = ((self.v[x_register] & 0xF0) >> 7 == 1) as u8;
-        self.v[x_register] *= 2;
-    }
-
-    fn SE_VX_VY(&mut self, x_register: usize, y_register: usize) {
-        if self.v[x_register] == self.v[y_register] {
-            self.pc += 2;
-        }
-    }
-
-    fn CLS(&mut self) {
+    fn cls(&mut self) {
         self.gfx = vec![0; (::SCREEN_WIDTH * ::SCREEN_HEIGHT) as usize];
     }
 
-    fn SYS(&mut self, value: u16) {
-        self.pc = value;
-        self.jmp = true;
-    }
-
-    fn RET(&mut self) {
+    fn ret(&mut self) {
         self.pc = self.stack.pop().unwrap();
     }
 
-    fn JUMP(&mut self, value: u16) {
-        self.pc = value;
+    fn jmp(&mut self) {
+        self.pc = self.instruction.nnn;
         self.jmp = true;
     }
 
-    fn CALL(&mut self, value: u16) {
+    fn call(&mut self) {
         self.stack.push(self.pc);
-        self.pc = value;
+        self.pc = self.instruction.nnn;
         self.jmp = true;
     }
 
-    fn SE_VX(&mut self, value: u8, register: usize) {
-        if register == 15 && value == 1 {
-            println!("Checking for ball collision VF:{:X}", self.v[0xF]);
-        }
-
-        if self.v[register] == value {
+    fn se_vb(&mut self) {
+        if self.v[self.instruction.x] == self.instruction.kk {
             self.pc += 2;
         }
     }
 
-    fn SNE_VX(&mut self, value: u8, register: usize) {
-        if self.v[register] != value {
+    fn sne_vb(&mut self) {
+        if self.v[self.instruction.x] != self.instruction.kk {
             self.pc += 2;
         }
     }
 
-    fn LD_VX(&mut self, value: u8, register: usize) {
-        self.v[register] = value;
+    fn se_vv(&mut self) {
+        if self.v[self.instruction.x] == self.v[self.instruction.y] {
+            self.pc += 2;
+        }
     }
 
-    fn ADD_VX(&mut self, value: u8, register: usize) {
-        self.v[register] = self.v[register].wrapping_add(value);
+    fn ld_vb(&mut self) {
+        self.v[self.instruction.x] = self.instruction.kk;
     }
 
-    fn LD_VX_VY(&mut self, x_register: usize, y_register: usize) {
-        self.v[x_register] = self.v[y_register];
+    fn add_vb(&mut self) {
+        self.v[self.instruction.x] = self.v[self.instruction.x].wrapping_add(self.instruction.kk);
     }
 
-    fn ADD_VX_VY(&mut self, x_register: usize, y_register: usize) {
-        let x = self.v[x_register] as u16;
-        let y = self.v[y_register] as u16;
+    fn ld_vv(&mut self) {
+        self.v[self.instruction.x] = self.v[self.instruction.y];
+    }
+
+    fn or(&mut self) {
+        self.v[self.instruction.x] |= self.v[self.instruction.y];
+    }
+
+    fn and(&mut self) {
+        self.v[self.instruction.x] &= self.v[self.instruction.y];
+    }
+
+    fn xor(&mut self) {
+        self.v[self.instruction.x] ^= self.v[self.instruction.y];
+    }
+
+    fn add_vv(&mut self) {
+        let x = self.v[self.instruction.x] as u16;
+        let y = self.v[self.instruction.y] as u16;
         let res = x + y;
 
         self.v[0xF] = (res > 255) as u8;
-        self.v[x_register] = res as u8;
+        self.v[self.instruction.x] = res as u8;
     }
 
-    fn SUB_VX_VY(&mut self, x_register: usize, y_register: usize) {
-        self.v[0xF] = (self.v[x_register] > self.v[y_register]) as u8;
-        self.v[x_register].wrapping_sub(self.v[y_register]);
+    fn sub(&mut self) {
+        self.v[0xF] = (self.v[self.instruction.x] > self.v[self.instruction.y]) as u8;
+        self.v[self.instruction.x].wrapping_sub(self.v[self.instruction.y]);
     }
 
-    fn OR_VX_VY(&mut self, x_register: usize, y_register: usize) {
-        self.v[x_register] |= self.v[y_register];
+    fn shr(&mut self) {
+        self.v[0xf] = self.v[self.instruction.x] & 0x1;
+        self.v[self.instruction.x] = self.v[self.instruction.x] >> 1;
     }
 
-    fn AND_VX_VY(&mut self, x_register: usize, y_register: usize) {
-        self.v[x_register] &= self.v[y_register];
+    fn subn(&mut self) {
+        self.v[0xF] = (self.v[self.instruction.y] > self.v[self.instruction.x]) as u8;
+        self.v[self.instruction.x] = self.v[self.instruction.y].wrapping_sub(self.v[self.instruction.x]);
     }
 
-    fn SNE_VX_VY(&mut self, x_register: usize, y_register: usize) {
-        if self.v[x_register] != self.v[y_register] {
+    fn shl(&mut self) {
+        self.v[0xf] = ((self.v[self.instruction.x] & 0xF0) >> 7 == 1) as u8;
+        self.v[self.instruction.x] *= 2;
+    }
+
+    fn sne_vv(&mut self) {
+        if self.v[self.instruction.x] != self.v[self.instruction.y] {
             self.pc += 2;
         }
     }
 
-    fn LD_I_VX(&mut self, x_register: usize) {
-        for i in 0usize..x_register {
-            self.ram[self.i as usize + i] = self.v[i];
-        }
+    fn ld_i(&mut self) {
+        self.i = self.instruction.nnn;
     }
 
-    fn LD_ST_VX(&mut self, x_register: usize) {
-        self.sound_timer = self.v[x_register];
+    fn jmp_v(&mut self) {
+        self.pc = (self.v[0] as u16) + self.instruction.nnn;
+        self.jmp = true;
     }
 
-    fn SKP_VX(&mut self, x_register: usize) {
-        if self.key[self.v[x_register] as usize] == 1 {
-            self.pc += 2;
-        }
-    }
-
-    fn SKNP_VX(&mut self, x_register: usize) {
-        if self.key[self.v[x_register] as usize] == 0 {
-            self.pc += 2;
-        }
-    }
-
-    fn RND_VX_B(&mut self, value: u8, x_register: usize) {
+    fn rnd(&mut self) {
         let mut rng = rand::thread_rng();
-        self.v[x_register] = rng.gen::<u8>() & value;
+        self.v[self.instruction.x] = rng.gen::<u8>() & self.instruction.kk;
     }
 
-    fn LD_VX_K(&mut self, register: usize) {
-        let mut key_pressed = false;
-
-        for i in 0..self.key.len() {
-            if self.key[i] == 1 {
-                self.ram[register] = i as u8;
-                key_pressed = true;
-            }
-        }
-
-        if !key_pressed {
-            self.pc -= 2;
-        }
-    }
-
-    fn ADD_I_VX(&mut self, register: usize) {
-        self.v[0xf] = (self.i + (self.v[register] as u16) > 255) as u8;
-        self.i += self.v[register] as u16;
-    }
-
-    fn LD_I(&mut self, value: u16) {
-        self.i = value;
-    }
-
-    fn LD_B_VX(&mut self, register: usize) {
-        self.ram[self.i as usize] = self.v[register] / 100;
-        self.ram[self.i as usize + 1] = (self.v[register] / 100) % 10;
-        self.ram[self.i as usize + 2] = (self.v[register] % 100) % 10;
-    }
-
-    fn LD_VX_I(&mut self, end_register: usize) {
-        for i in 0usize..end_register {
-            self.v[i] = self.ram[self.i as usize + i];
-        }
-    }
-
-    fn LD_F_VX(&mut self, register: usize) {
-        self.i = (self.v[register] * 5) as u16;
-    }
-
-    fn LD_DT_VX(&mut self, register: usize) {
-        self.delay_timer = self.v[register];
-    }
-
-    fn LD_VX_DT(&mut self, register: usize) {
-        self.v[register] = self.delay_timer;
-    }
-
-    fn DRAW(&mut self, x_register: usize, y_register: usize, number_of_bytes: u8) {
-        let x = self.v[x_register] as usize;
-        let y = self.v[y_register] as usize;
-        let height = number_of_bytes as usize;
+    fn drw(&mut self) {
+        let x = self.v[self.instruction.x] as usize;
+        let y = self.v[self.instruction.y] as usize;
+        let height = self.instruction.n as usize;
 
         self.v[0xF] = 0;
 
@@ -380,6 +280,72 @@ impl CHIP8 {
         }
 
         self.draw = true;
+    }
+
+    fn skp(&mut self) {
+        if self.key[self.v[self.instruction.x] as usize] == 1 {
+            self.pc += 2;
+        }
+    }
+
+    fn sknp(&mut self) {
+        if self.key[self.v[self.instruction.x] as usize] == 0 {
+            self.pc += 2;
+        }
+    }
+
+    fn ld_vdt(&mut self) {
+        self.v[self.instruction.x] = self.delay_timer;
+    }
+
+    fn ld_vk(&mut self) {
+        let mut key_pressed = false;
+
+        for i in 0..self.key.len() {
+            if self.key[i] == 1 {
+                self.v[self.instruction.x] = i as u8;
+                key_pressed = true;
+            }
+        }
+
+        if !key_pressed {
+            self.pc -= 2;
+        }
+    }
+
+    fn ld_dtv(&mut self) {
+        self.delay_timer = self.v[self.instruction.x];
+    }
+
+    fn ld_stv(&mut self) {
+        self.sound_timer = self.v[self.instruction.x];
+    }
+
+    fn add_iv(&mut self) {
+        // self.v[0xf] = (self.i + (self.v[self.instruction.x] as u16) > 255) as u8;
+        self.i += self.v[self.instruction.x] as u16;
+    }
+
+    fn ld_fv(&mut self) {
+        self.i = (self.v[self.instruction.x] * 5) as u16;
+    }
+
+    fn ld_bv(&mut self) {
+        self.ram[self.i as usize] = self.v[self.instruction.x] / 100;
+        self.ram[self.i as usize + 1] = (self.v[self.instruction.x] / 100) % 10;
+        self.ram[self.i as usize + 2] = (self.v[self.instruction.x] % 100) % 10;
+    }
+
+    fn ld_iv(&mut self) {
+        for i in 0usize..self.instruction.x {
+            self.v[i] = self.ram[self.i as usize + i];
+        }
+    }
+
+    fn ld_vi(&mut self) {
+        for i in 0usize..self.instruction.x {
+            self.v[i] = self.ram[self.i as usize + i];
+        }
     }
 
     pub fn done(&self) -> bool {

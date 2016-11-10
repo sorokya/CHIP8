@@ -1,5 +1,6 @@
 use std::fs::File;
-use std::env;
+use std::io::{stdin, stdout};
+use std::io::prelude::*;
 
 #[macro_use] extern crate enum_primitive;
 
@@ -8,6 +9,9 @@ use sfml::graphics::{Vertex, VertexArray, Color, RenderTarget, RenderWindow,
                      PrimitiveType};
 use sfml::window::{Key, VideoMode, Event, window_style};
 use sfml::system::{Clock, Time, Vector2f};
+
+extern crate clap;
+use clap::{Arg, App};
 
 const SCREEN_WIDTH: u32 = 64;
 const SCREEN_HEIGHT: u32 = 32;
@@ -18,27 +22,57 @@ mod chip8;
 use chip8::CHIP8;
 
 fn main() {
-    let rom_name = match env::args().nth(1) {
-        Some(name) => name,
-        None => panic!("Please enter a rom name.."),
-    };
+    let matches = App::new("CHIP-8")
+                    .version("1.0")
+                    .author("Richard Leek <thisisdigitx@gmail.com>")
+                    .about("CHIP-8 virtual machine in Rust")
+                    .arg(Arg::with_name("INPUT")
+                        .help("The path to the rom to load")
+                        .required(true)
+                        .index(1))
+                    .arg(Arg::with_name("debug")
+                        .help("Runs the rom in debug mode")
+                        .short("d"))
+                    .get_matches();
 
-    println!("Loading ROM {}", rom_name);
+    let rom_name = matches.value_of("INPUT").unwrap();
+    let debug = matches.is_present("debug");
 
     let mut chip = CHIP8::new(&mut File::open(&rom_name).unwrap());
 
-    let mut window = RenderWindow::new(VideoMode::new_init(SCREEN_WIDTH * SCREEN_SCALE, SCREEN_HEIGHT * SCREEN_SCALE, 32),
-                                       "CHIP8",
-                                       window_style::CLOSE,
-                                       &Default::default())
-        .unwrap();
 
-    window.set_vertical_sync_enabled(true);
 
-    let mut scene = VertexArray::new_init(PrimitiveType::sfQuads, SCREEN_WIDTH * SCREEN_HEIGHT * 4);
-    let mut clock = Clock::new();
+    if !debug {
+        let mut window = RenderWindow::new(VideoMode::new_init(SCREEN_WIDTH * SCREEN_SCALE, SCREEN_HEIGHT * SCREEN_SCALE, 32),
+                                           "CHIP8",
+                                           window_style::CLOSE,
+                                           &Default::default())
+            .unwrap();
 
-    while !chip.done() {
+        window.set_vertical_sync_enabled(true);
+
+        let mut scene = VertexArray::new_init(PrimitiveType::sfQuads, SCREEN_WIDTH * SCREEN_HEIGHT * 4);
+        let mut clock = Clock::new();
+        
+        while !chip.done() {
+
+            update(&mut chip, &window);
+            chip.tick(clock.restart().as_seconds());
+            draw(&chip, &mut window, &mut scene);
+        }
+    } else {
+        println!("Debug Mode.. Press return to step");
+        loop {
+            stdout().flush().unwrap();
+            let mut input = String::new();
+            stdin().read_line(&mut input).unwrap();
+
+            chip.tick(0.0);
+            println!("{}", chip);
+        }
+    }
+
+    fn update(chip: &mut CHIP8, window: &RenderWindow) {
         chip.key[0] = Key::Num1.is_pressed() as u8;
         chip.key[1] = Key::Num2.is_pressed() as u8;
         chip.key[2] = Key::Num3.is_pressed() as u8;
@@ -56,8 +90,6 @@ fn main() {
         chip.key[14] = Key::C.is_pressed() as u8;
         chip.key[15] = Key::V.is_pressed() as u8;
 
-        chip.tick(clock.restart().as_seconds());
-
         for event in window.events() {
             match event {
                 Event::Closed |
@@ -65,7 +97,9 @@ fn main() {
                 _ => {}
             }
         }
+    }
 
+    fn draw(chip: &CHIP8, window: &mut RenderWindow, scene: &mut VertexArray) {
         if chip.draw {
             window.clear(&Color::black());
             scene.clear();
@@ -100,9 +134,8 @@ fn main() {
                 }
             }
 
-            window.draw(&scene);
+            window.draw(scene);
             window.display();
         }
-
     }
 }
