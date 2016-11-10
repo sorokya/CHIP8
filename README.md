@@ -1,3 +1,5 @@
+![alt text](https://i.imgur.com/fuatEM4.png "INVADERS Screenshot")
+
 # About
 This is my attempt at writing a CHIP-8 / SCHIP interpreter. I programmed it
 in rust using [SFML](http://sfml-dev.org) for handling the window creation
@@ -16,4 +18,4 @@ https://github.com/jeremyletang/rust-sfml
 
 # Usage
 The program uses [Clap](https://clap.rs) for command line arguments. The only required
-argument is the path to the rom file you want to load. Use --help to see other options. 
+argument is the path to the rom file you want to load. Use --help to see other options.
