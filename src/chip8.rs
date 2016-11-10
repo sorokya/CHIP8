@@ -55,7 +55,6 @@ pub struct CHIP8 {
 
     // Stack & Stack Pointer
     stack: Vec<u16>,
-    sp: u16,
 
     // Input state
     pub key: Vec<u8>,
@@ -67,11 +66,13 @@ pub struct CHIP8 {
     instruction: Instruction,
 
     pub draw: bool,
+
+    pub done: bool,
 }
 
 impl fmt::Display for CHIP8 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "PC: {}\nInstruction: {}\nRegisters: {:?}\nDelay Timer: {}\nSound Timer: {}", self.pc, self.instruction, self.v, self.delay_timer, self.sound_timer)
+        write!(f, "PC: {}\nInstruction: {}\nRegisters: {:?}\nDelay Timer: {}\nSound Timer: {}\nI: {}", self.pc, self.instruction, self.v, self.delay_timer, self.sound_timer, self.i)
     }
 }
 
@@ -207,27 +208,35 @@ impl CHIP8 {
         let y = self.v[self.instruction.y] as u16;
         let res = x + y;
 
+        // println!("add_vv result: {}", res);
+
         self.v[0xF] = (res > 255) as u8;
         self.v[self.instruction.x] = res as u8;
+
+        // println!("{} + {}; VF is {}", self.v[self.instruction.y], self.v[self.instruction.x], self.v[0xF]);
     }
 
     fn sub(&mut self) {
+        // println!("sub x:{} y:{}", self.v[self.instruction.x], self.v[self.instruction.y])
         self.v[0xF] = (self.v[self.instruction.x] > self.v[self.instruction.y]) as u8;
-        self.v[self.instruction.x].wrapping_sub(self.v[self.instruction.y]);
+        self.v[self.instruction.x] = self.v[self.instruction.x].wrapping_sub(self.v[self.instruction.y]);
+
+        // println!("{} - {}; VF is {}", self.v[self.instruction.x], self.v[self.instruction.y], self.v[0xF]);
     }
 
     fn shr(&mut self) {
-        self.v[0xf] = self.v[self.instruction.x] & 0x1;
-        self.v[self.instruction.x] = self.v[self.instruction.x] >> 1;
+        self.v[0xf] = ((self.v[self.instruction.x] & 0xF0) >> 7 == 1) as u8;
+        self.v[self.instruction.x] = self.v[self.instruction.x] / 2;
     }
 
     fn subn(&mut self) {
         self.v[0xF] = (self.v[self.instruction.y] > self.v[self.instruction.x]) as u8;
         self.v[self.instruction.x] = self.v[self.instruction.y].wrapping_sub(self.v[self.instruction.x]);
+        // println!("{} - {}; VF is {}", self.v[self.instruction.y], self.v[self.instruction.x], self.v[0xF]);
     }
 
     fn shl(&mut self) {
-        self.v[0xf] = ((self.v[self.instruction.x] & 0xF0) >> 7 == 1) as u8;
+        self.v[0xf] = (self.v[self.instruction.x] & 0xF == 1) as u8;
         self.v[self.instruction.x] *= 2;
     }
 
@@ -322,7 +331,6 @@ impl CHIP8 {
     }
 
     fn add_iv(&mut self) {
-        // self.v[0xf] = (self.i + (self.v[self.instruction.x] as u16) > 255) as u8;
         self.i += self.v[self.instruction.x] as u16;
     }
 
@@ -332,13 +340,17 @@ impl CHIP8 {
 
     fn ld_bv(&mut self) {
         self.ram[self.i as usize] = self.v[self.instruction.x] / 100;
-        self.ram[self.i as usize + 1] = (self.v[self.instruction.x] / 100) % 10;
+        self.ram[self.i as usize + 1] = (self.v[self.instruction.x] / 10) % 10;
         self.ram[self.i as usize + 2] = (self.v[self.instruction.x] % 100) % 10;
     }
 
     fn ld_iv(&mut self) {
         for i in 0usize..self.instruction.x {
-            self.v[i] = self.ram[self.i as usize + i];
+            self.ram[self.i as usize + i] = self.v[i];
+        }
+
+        if self.instruction.x == 0 {
+            self.ram[self.i as usize] = self.v[0];
         }
     }
 
@@ -346,10 +358,10 @@ impl CHIP8 {
         for i in 0usize..self.instruction.x {
             self.v[i] = self.ram[self.i as usize + i];
         }
-    }
 
-    pub fn done(&self) -> bool {
-        false
+        if self.instruction.x == 0 {
+            self.v[0] = self.ram[self.i as usize];
+        }
     }
 
     pub fn new(r: &mut Read) -> CHIP8 {
@@ -376,12 +388,12 @@ impl CHIP8 {
             delay_timer: 0,
             sound_timer: 0,
             stack: Vec::new(),
-            sp: 0,
             key: vec![0; NUMBER_OF_KEYS],
             jmp: false,
             time_acc: 0.0,
             instruction: Instruction::new(),
             draw: false,
+            done: false,
         }
     }
 }

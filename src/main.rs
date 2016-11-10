@@ -8,14 +8,13 @@ extern crate sfml;
 use sfml::graphics::{Vertex, VertexArray, Color, RenderTarget, RenderWindow,
                      PrimitiveType};
 use sfml::window::{Key, VideoMode, Event, window_style};
-use sfml::system::{Clock, Time, Vector2f};
+use sfml::system::{Clock, Vector2f};
 
 extern crate clap;
 use clap::{Arg, App};
 
 const SCREEN_WIDTH: u32 = 64;
 const SCREEN_HEIGHT: u32 = 32;
-const SCREEN_SCALE: u32 = 8;
 
 mod instruction;
 mod chip8;
@@ -33,17 +32,26 @@ fn main() {
                     .arg(Arg::with_name("debug")
                         .help("Runs the rom in debug mode")
                         .short("d"))
+                    .arg(Arg::with_name("scale")
+                        .help("Scale of the window")
+                        .value_name("scale")
+                        .short("s"))
                     .get_matches();
 
     let rom_name = matches.value_of("INPUT").unwrap();
     let debug = matches.is_present("debug");
 
     let mut chip = CHIP8::new(&mut File::open(&rom_name).unwrap());
-
-
+    let screen_scale: u32 = {
+        if matches.is_present("scale") {
+            matches.value_of("scale").unwrap().parse::<u32>().unwrap()
+        } else {
+            8
+        }
+    };
 
     if !debug {
-        let mut window = RenderWindow::new(VideoMode::new_init(SCREEN_WIDTH * SCREEN_SCALE, SCREEN_HEIGHT * SCREEN_SCALE, 32),
+        let mut window = RenderWindow::new(VideoMode::new_init(SCREEN_WIDTH * screen_scale, SCREEN_HEIGHT * screen_scale, 32),
                                            "CHIP8",
                                            window_style::CLOSE,
                                            &Default::default())
@@ -53,13 +61,14 @@ fn main() {
 
         let mut scene = VertexArray::new_init(PrimitiveType::sfQuads, SCREEN_WIDTH * SCREEN_HEIGHT * 4);
         let mut clock = Clock::new();
-        
-        while !chip.done() {
 
+        while !chip.done {
             update(&mut chip, &window);
             chip.tick(clock.restart().as_seconds());
-            draw(&chip, &mut window, &mut scene);
+            draw(&chip, &mut window, &mut scene, screen_scale);
         }
+
+        return;
     } else {
         println!("Debug Mode.. Press return to step");
         loop {
@@ -67,8 +76,9 @@ fn main() {
             let mut input = String::new();
             stdin().read_line(&mut input).unwrap();
 
-            chip.tick(0.0);
+            chip.tick(1.0 / 60.0);
             println!("{}", chip);
+            draw_debug(&chip);
         }
     }
 
@@ -93,13 +103,31 @@ fn main() {
         for event in window.events() {
             match event {
                 Event::Closed |
-                Event::KeyPressed { code: Key::Escape, .. } => return,
+                Event::KeyPressed { code: Key::Escape, .. } => {
+                    chip.done = true;
+                },
                 _ => {}
             }
         }
     }
 
-    fn draw(chip: &CHIP8, window: &mut RenderWindow, scene: &mut VertexArray) {
+    fn draw_debug(chip: &CHIP8) {
+        if chip.draw {
+            for y in 0..SCREEN_HEIGHT as u32 {
+                for x in 0..SCREEN_WIDTH as u32 {
+                    if chip.gfx[(x+y*SCREEN_WIDTH) as usize] == 1 {
+                        print!("#");
+                    } else {
+                        print!(" ");
+                    }
+                }
+
+                print!("\n");
+            }
+        }
+    }
+
+    fn draw(chip: &CHIP8, window: &mut RenderWindow, scene: &mut VertexArray, screen_scale: u32) {
         if chip.draw {
             window.clear(&Color::black());
             scene.clear();
@@ -108,26 +136,26 @@ fn main() {
                 for x in 0..SCREEN_WIDTH as u32 {
                     if chip.gfx[(x+y*SCREEN_WIDTH) as usize] == 1 {
                         scene.append(&Vertex::new(&Vector2f {
-                            x: x as f32 * SCREEN_SCALE as f32,
-                            y: y as f32 * SCREEN_SCALE as f32,
+                            x: x as f32 * screen_scale as f32,
+                            y: y as f32 * screen_scale as f32,
                         },
                         &Color::white(), &Vector2f {x:0.0,y:0.0}));
 
                         scene.append(&Vertex::new(&Vector2f {
-                            x: (x + 1) as f32 * SCREEN_SCALE as f32,
-                            y: y as f32 * SCREEN_SCALE as f32,
+                            x: (x + 1) as f32 * screen_scale as f32,
+                            y: y as f32 * screen_scale as f32,
                         },
                         &Color::white(), &Vector2f {x:0.0,y:0.0}));
 
                         scene.append(&Vertex::new(&Vector2f {
-                            x: (x + 1) as f32 * SCREEN_SCALE as f32,
-                            y: (y + 1) as f32 * SCREEN_SCALE as f32,
+                            x: (x + 1) as f32 * screen_scale as f32,
+                            y: (y + 1) as f32 * screen_scale as f32,
                         },
                         &Color::white(), &Vector2f {x:0.0,y:0.0}));
 
                         scene.append(&Vertex::new(&Vector2f {
-                            x: x as f32 * SCREEN_SCALE as f32,
-                            y: (y + 1) as f32 * SCREEN_SCALE as f32,
+                            x: x as f32 * screen_scale as f32,
+                            y: (y + 1) as f32 * screen_scale as f32,
                         },
                         &Color::white(), &Vector2f {x:0.0,y:0.0}));
                     }
